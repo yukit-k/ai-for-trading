@@ -1,0 +1,25 @@
+Species,Color,Length (mm)
+Mobug,Brown,11.6
+Mobug,Blue,16.3
+Lobug,Blue,15.1
+Lobug,Green,23.7
+Lobug,Blue,18.4
+Lobug,Brown,17.1
+Mobug,Brown,15.7
+Lobug,Green,18.6
+Lobug,Blue,22.9
+Lobug,Blue,21.0
+Lobug,Blue,20.5
+Mobug,Green,21.2
+Mobug,Brown,13.8
+Lobug,Blue,14.5
+Lobug,Green,24.8
+Mobug,Brown,18.2
+Lobug,Green,17.9
+Lobug,Green,22.7
+Mobug,Green,19.9
+Mobug,Blue,14.6
+Mobug,Blue,19.2
+Lobug,Brown,14.1
+Lobug,Green,18.8
+Mobug,Blue,13.1

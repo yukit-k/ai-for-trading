@@ -17,6 +17,7 @@ Designed by WorldQuant.
  - Numpy, Pandas, Matplotlib
  - Scikit-learn
  - Pytorch
+ - Quantopian/zipline
  - Quantmedia
  
 ### My Course:

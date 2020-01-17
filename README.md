@@ -27,6 +27,25 @@ Designed by WorldQuant.
 
 ### Project Details:
 #### 1. Basic Quantitative Trading - Trading with Momentum
+0. import pandas, numpy, helper
+1. Load Quatemedia EOD Price Data
+2. Resample to Month-end ```close_price.resample('M').last()```
+3. Compute Log Return
+4. Shift Returns ```returns.shift(n)```
+5. Generate Trading Signal
+   * Strategy tried:
+        > For each month-end observation period, rank the stocks by previous returns, from the highest to the lowest. Select the top performing stocks for the long portfolio, and the bottom performing stocks for the short portfolio.
+   * ```
+      for i, row in prev_price:
+        top_stock.loc[i] = row.nlargest(top_n)
+     ```
+6. Projected Return ```portfolio_returns = (lookahead_returns * (df_long - df_short))/n_stocks
+7. Statistical Test
+   * Annualized Rate of Return ```(np.exp(portfolio_returns.T.sum().dropna().mean()*12) - 1) * 100```
+   * T-Test
+     * Null hypothesis (H0): Actual mean return from the signal is zero.
+     * When p value < 0.05, the null hypothesis is rejected
+     * One-sample, one-sided t-test ```(t_value, p_value) = scipy.stats.ttest_1samp(portfolio_return, hypothesis)```
 #### 2. Advanced Quantitative Trading - Breakout Strategy
 #### 3. Stocks, Indices, and ETFs - Smart Beta and Portfolio Optimization
 #### 4. Factor Investing and Alpha Research - Alpha Research and Factor Modeling

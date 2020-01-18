@@ -47,6 +47,30 @@ Designed by WorldQuant.
      * When p value < 0.05, the null hypothesis is rejected
      * One-sample, one-sided t-test ```(t_value, p_value) = scipy.stats.ttest_1samp(portfolio_return, hypothesis)```
 #### 2. Advanced Quantitative Trading - Breakout Strategy
+0. import pandas, numpy, helper
+1. Load Quatemedia EOD Price Data
+2. The Alpha Research Process
+    * What feature of markets or investor behaviour would lead to a persistent anomaly that my signal will try to use?
+    * Example Hypothesis:
+      * Stocks oscillate in a range without news or significant interest
+      * Traders seek to sell at the top of the range and buy at the bottom
+      * When stocks break out of the range,
+        * the liquidity traders seek to cover the losses, which magnify the move out of the range
+        * the move out of the range attract other investor interst due to herd behaviour which favor continuation of the trend 
+    * Process:
+      1. Observ & Research
+      2. Form Hypothesis
+      3. Validate Hypothesis, back to #1
+      4. Code Expression
+      5. Evaluate in-sample
+      6. Evaluate out-of-sample
+3. Compute Highs and Lows in a Window
+    * e.g., Rolling max/min for the past 50 days
+4. Compute Long and Short Signals
+    * long = close > high, short = close < low, position = long - short
+5. Filter Signals
+    * 
+6. 
 #### 3. Stocks, Indices, and ETFs - Smart Beta and Portfolio Optimization
 #### 4. Factor Investing and Alpha Research - Alpha Research and Factor Modeling
 #### 5. Sentiment Analysis with NLP - NLP on Financial Statement

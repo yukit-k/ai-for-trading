@@ -68,11 +68,92 @@ Designed by WorldQuant.
     * e.g., Rolling max/min for the past 50 days
 4. Compute Long and Short Signals
     * long = close > high, short = close < low, position = long - short
-5. Filter Signals
-    * 
-6. 
+5. Filter Signals (5, 10, 20 day signal window)
+    * Check if there was a signal in the past window_size of days
+      `has_past_signal = bool(sum(clean_signals[signal_i:signal_i+window_size]))`
+    * Use the current signal if there's no past signal, else 0/False
+      `clean_signal.append(not has_past_signal and current_signal)`
+    * Apply the above to short (signal[signal == -1].fillna(0.astype(int))) and long, add them up
+6. Lookahead Close Price
+    * How many days to short or long `close_price.shift(lookahead_days*-1)`
+7. Lookahead Price Return
+    * Log return between lookahead_price and close_price
+8. Compute the Signal Return
+    * signal * lookahead_returns
+9. Test for Significance
+    * Plot a histogram of the signal returns
+10. Check Outliers in the histogram
+11. Kolmogorov-Smirnov Test (KS-Test)
+    * Check which stock is causing the outlying returns
+    * Run KS-Test on a normal distribution against each stock's signal returns
+    * `ks_value, p_value = scipy.stats.kstest(rvs=group['signal_return'].values, cdf='norm', args=(mean_all, std_all))`
+12. Find outliers
+    * Symbols that pass the null hypothesis with a p-value less than 0.05
+    * Symbols that with a KS value above ks_threshod(0.8)
+    * Remove them by `good_tickers = list(set(close.column) - outlier_tickers)`
 #### 3. Stocks, Indices, and ETFs - Smart Beta and Portfolio Optimization
+1. Load large dollar volume stocks from quotemedia
+##### Smart Beta by alternative weighting - dividend yield to choose the portfolio weight
+2. Calculate Index Weights (dollar volume weights)
+3. Calculate Portfolio Weights based on Dividend
+4. Calculate Returns, Weighted Returns, Cumulative Returns
+5. Tracking Error ` np.sqrt(252) * np.std(benchmark_returns_daily - etf_returns_daily, ddof=1)`
+##### Portfolio Optimization - minimize the portfolio variance and closely track the index
+$Minimize \left [ \sigma^2_p + \lambda \sqrt{\sum_{1}^{m}(weight_i - indexWeight_i)^2} \right  ]$ where $m$ is the number of stocks in the portfolio, and $\lambda$ is a scaling factor that you can choose.
+6. Calculate the covariance of the returns `np.cov(returns.fillna(0).values, rowvar=False)`
+7. Calculate optimal weights
+   * Portfolio Variance: $\sigma^2_p = \mathbf{x^T} \mathbf{P} \mathbf{x}$
+      * `cov_quad = cvx.quad_form(x, P)`
+   * Distance from index weights: $\left \| \mathbf{x} - \mathbf{index} \right \|_2$ = $\sqrt{\sum_{1}^{n}(weight_i - indexWeight_i)^2}$
+     * `index_diff = cvx.norm(x, p=2, axix=None)`
+   * Objective function = $\mathbf{x^T} \mathbf{P} \mathbf{x} + \lambda \left \| \mathbf{x} - \mathbf{index} \right \|_2$
+     * `cvx.Minimize(cov_quad + scale * index_diff)`
+   * Constraints
+     * ```
+       x = cvx.Variable()
+       constraints = [x >= 0, sum(x) == 1]
+       ```
+   * Optimization
+     * ```
+       problem = cvx.Problem(objective, constraints
+       problem.solve()
+       ```
+8. Rebalance Portfolio over time
+9. Portfolio Turnover
+   * $ AnnualizedTurnover =\frac{SumTotalTurnover}{NumberOfRebalanceEvents} * NumberofRebalanceEventsPerYear $
+   * $ SumTotalTurnover =\sum_{t,n}{\left | x_{t,n} - x_{t+1,n} \right |} $ Where $ x_{t,n} $ are the weights at time $ t $ for equity $ n $.
+   * $ SumTotalTurnover $ is just a different way of writing $ \sum \left | x_{t_1,n} - x_{t_2,n} \right | $
+ Minimum volatility ETF
 #### 4. Factor Investing and Alpha Research - Alpha Research and Factor Modeling
+1. Load equitiies EOD price by zipline.data.bundles
+2. Build Pipeline Engine
+3. Get Returns
+##### Statistical Risk Model
+4. Fit PCA
+5. Factor Betas
+6. Factor Returns
+7. Factor Coveriance Matrix
+8. Idiosyncratic Variance Matrix
+9. Idiosyncratic Variance Vector
+10. Predict using the Risk Model
+##### Create Alpha Factors
+11. Momentum 1 Year Factor
+12. Mean Reversion 5 Day Sector Neutral Factor
+13. Mean Reversion 5 Day Sector Neutral Smoothed Factor
+14. Overnight Sentiment Factor
+15. Overnight Sentiment Smoothed Factor
+16. Combine the Factors to a single Pipeline
+##### Evaluate Alpha Factors
+17. Get Pricing Data
+18. Format Alpha Factors and Pricing for Alphalens
+19. Quantile Analysis
+20. Turnover Analysis
+21. Sharpe Ratio of the Alphas
+22. The Combined Alpha Vector
+##### Optimal Portfolio Constrained by Risk Model
+23. Objective and Constraints
+24. Optimize with a Regularization Parameter
+25. Optimize with a Strict Factor Constrains and Target Weighting
 #### 5. Sentiment Analysis with NLP - NLP on Financial Statement
 0. import nltk, numpy, pandas, pickle, pprint, tqdm.tqdm, bs4.BeautifulSoup, re
     * ```nltk.download('stopwords'), nltk.download('wordnet')```

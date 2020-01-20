@@ -125,17 +125,44 @@ $Minimize \left [ \sigma^2_p + \lambda \sqrt{\sum_{1}^{m}(weight_i - indexWeight
    * $ SumTotalTurnover $ is just a different way of writing $ \sum \left | x_{t_1,n} - x_{t_2,n} \right | $
  Minimum volatility ETF
 #### 4. Factor Investing and Alpha Research - Alpha Research and Factor Modeling
-1. Load equitiies EOD price by zipline.data.bundles
+0. import cvxpy, numpy, pandas, time, matplotlib.pyplot
+1. Load equitiies EOD price (zipline.data.bundles)
+    * `bundles.register(bundle_name, ingest_func)`
+    * `bundles.load(bundle_name)`
 2. Build Pipeline Engine
+    * `universe = AverageDollarVolume(window_length=120).top(500)` <- 490 Tickers
+    * `engine = SimplePipelineEngine(get_loader, calendar, asset_finder)`
 3. Get Returns
+    * `data_portal = DataPotal()`
+    * `get_pricing = data_portal.get_history_window()`
+    * `returns = get_pricing().pct_change()[1:].fillna(0)` <- e.g. 5 year: 1256x490
 ##### Statistical Risk Model
 4. Fit PCA
+    * `pca = sklearn.decomposition.PCA(n_components, svd_solver='full')`
+    * `pca.fit()`
+    * `pca.components_` <- 20x490
 5. Factor Betas
+    * `pd.DataFrame(pca.components_.T, index=returns.columns.values, columns=np.arange(20))` <- 20x490
 6. Factor Returns
+    * `pd.DataFrame(pca.transform(returns), index=returns.index , columns=np.arange(20))` <- 490x20
 7. Factor Coveriance Matrix
+    * `np.diag(np.var(factor_returns, axix=0, ddof=1)*252)` <- 20x20
 8. Idiosyncratic Variance Matrix
+    * ```
+      _common_returns = pd.DataFrame(np.dot(factor_returns, factor_betas.T), returns.index, returns.columns)
+      _residuals = (returns - _common_returns)
+      pd.DataFrame(np.diag(np.var(_residuals)*252), returns.columns, returns.columns) <- 490x490
+      ```
 9. Idiosyncratic Variance Vector
-10. Predict using the Risk Model
+    * `# np.dot(idiosyncratic_variance_matrix, np.ones(len(idiosyncratic_variance_matrix)))`
+    * `pd.DaraFrame(np.diag(idiosyncratic_variance_matrix), returns.columns)`
+10. Predict Portfolio Risk using the Risk Model
+    * $ \sqrt{X^{T}(BFB^{T} + S)X} $ where:
+      * $ X $ is the portfolio weights
+      * $ B $ is the factor betas
+      * $ F $ is the factor covariance matrix
+      * $ S $ is the idiosyncratic variance matrix
+    * `np.sqrt(weight_df.T.dot(factor_betas.dot(factor_cov_matrix).dot(factor_betas.T) + idiosyncratic_var_matrix).dot(weight_df))`
 ##### Create Alpha Factors
 11. Momentum 1 Year Factor
 12. Mean Reversion 5 Day Sector Neutral Factor
@@ -143,6 +170,12 @@ $Minimize \left [ \sigma^2_p + \lambda \sqrt{\sum_{1}^{m}(weight_i - indexWeight
 14. Overnight Sentiment Factor
 15. Overnight Sentiment Smoothed Factor
 16. Combine the Factors to a single Pipeline
+    * ```
+      pipeline = Pipeline(screen=universe)
+      pipeline.add(momentum_1yr(252, universe, sector), 'Momentum_1YR')
+      :
+      all_factors = engine.run_pipeline(pipeline, start, end)
+      ```
 ##### Evaluate Alpha Factors
 17. Get Pricing Data
 18. Format Alpha Factors and Pricing for Alphalens
@@ -212,7 +245,7 @@ $Minimize \left [ \sigma^2_p + \lambda \sqrt{\sum_{1}^{m}(weight_i - indexWeight
     * Sharpe Ratio of the Alphas
       * Should be 1 or higher
       * ```np.sqrt(252)*factor_returns.mean() / factor_returns.std()```
-#### 6. Advanced NLP with Deep Leaning - Analizing Stock Sentiment from Twits
+#### 6. Advanced NLP with Deep Leaning - Analizing Stock Sentiment from Twits (requiring GPU)
 0. import json, nltk, os, random, re, torch, torch.nn, torch.optim, torch.nn.functional, numpy
 1. Import Twits
     * json.load()

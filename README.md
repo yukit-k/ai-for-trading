@@ -29,9 +29,9 @@ Designed by WorldQuant.
 #### 1. Basic Quantitative Trading - Trading with Momentum
 0. import pandas, numpy, helper
 1. Load Quatemedia EOD Price Data
-2. Resample to Month-end ```close_price.resample('M').last()```
+2. Resample to Month-end `close_price.resample('M').last()`
 3. Compute Log Return
-4. Shift Returns ```returns.shift(n)```
+4. Shift Returns `returns.shift(n)`
 5. Generate Trading Signal
    * Strategy tried:
         > For each month-end observation period, rank the stocks by previous returns, from the highest to the lowest. Select the top performing stocks for the long portfolio, and the bottom performing stocks for the short portfolio.
@@ -39,13 +39,13 @@ Designed by WorldQuant.
       for i, row in prev_price:
         top_stock.loc[i] = row.nlargest(top_n)
      ```
-6. Projected Return ```portfolio_returns = (lookahead_returns * (df_long - df_short))/n_stocks
+6. Projected Return `portfolio_returns = (lookahead_returns * (df_long - df_short))/n_stocks`
 7. Statistical Test
-   * Annualized Rate of Return ```(np.exp(portfolio_returns.T.sum().dropna().mean()*12) - 1) * 100```
+   * Annualized Rate of Return `(np.exp(portfolio_returns.T.sum().dropna().mean()*12) - 1) * 100`
    * T-Test
      * Null hypothesis (H0): Actual mean return from the signal is zero.
      * When p value < 0.05, the null hypothesis is rejected
-     * One-sample, one-sided t-test ```(t_value, p_value) = scipy.stats.ttest_1samp(portfolio_return, hypothesis)```
+     * One-sample, one-sided t-test `(t_value, p_value) = scipy.stats.ttest_1samp(portfolio_return, hypothesis)`
 #### 2. Advanced Quantitative Trading - Breakout Strategy
 0. import pandas, numpy, helper
 1. Load Quatemedia EOD Price Data
@@ -178,38 +178,81 @@ $Minimize \left [ \sigma^2_p + \lambda \sqrt{\sum_{1}^{m}(weight_i - indexWeight
       ```
 ##### Evaluate Alpha Factors
 17. Get Pricing Data
+    * `assets = all_factors.index.level[1].values.tolist()`
 18. Format Alpha Factors and Pricing for Alphalens
+    * `clean_factor_data = {factor: alphalens.get_clean_factor_and_forward_returns(factor, prices, period=[1])}`
+    * `unixt_factor_data = {factor: factor_data.set_index(pd.MultiIndex.from_tuples([(x.timestamp(), y) for x, y in factor_data.index.values], names=['date', 'asset']))}`
 19. Quantile Analysis
+    * Factor Returns: 
+      * `alphalens.performance.factor_returns(factor_data).iloc[:, 0].cumprod().plot()`
+      * This should be generally move up and to the right
+    * Basis Points Per Day per Quantile
+      * `alphalens.performance.mean_return_by_quantile(factor_data)[0].iloc[:, 0].plot.bar()`
+      * Should be monotonic, not too much on short that is not practical to implement
+      * Return spread (Q1 minus Q5)*252, considering transaction cost to cut this half, should be clear that these alphas can only survive in an institutional setting and that leverage will likely need to be applied
 20. Turnover Analysis
+    * Light test before full backtest to see the stability of the alphas over time
+    * Factor Rank Autocorrelation (FRA) should be close to 1
+    * `alphalens.performance.factor_rank_autocorrelation(factor_data).plot()`
 21. Sharpe Ratio of the Alphas
+    * `pd.Series(data=252*factor_returns.mean()/factor_returns.std())`
 22. The Combined Alpha Vector
+    * ML like Random Forest to get a single score per stock
+    * Simpler approach is to jsut average
 ##### Optimal Portfolio Constrained by Risk Model
 23. Objective and Constraints
+    * Objective Function:
+      * CVXPY objective function that maximizes $ \alpha^T * x \\ $, where $ x $ is the portfolio weights and $ \alpha $ is the alpha vector.
+      * `cvx.Minimize(-alpha_vector.values.flatten()*weights)`
+    * Constraints
+      * $ r \leq risk_{\text{cap}}^2 \\ $ `risk <= self.risk_cap **2`
+      * $ B^T * x \preceq factor_{\text{max}} \\ $ `factor_betas.T*weights <= self.factor_max`
+      * $ B^T * x \succeq factor_{\text{min}} \\ $ `factor_betas.T*weight >= self.factor_min`
+      * $ x^T\mathbb{1} = 0 \\ $ `sum(weights) == 0.0`
+      * $ \|x\|_1 \leq 1 \\ $ `sum(cvs.abs(weights)) <= 1.0`
+      * $ x \succeq weights_{\text{min}} \\ $ `weights >= self.weights_min`
+      * $ x \preceq weights_{\text{max}} $ `weights <= self.weights_max`
+      * Where $ x $ is the portfolio weights, $ B $ is the factor betas, and $ r $ is the portfolio risk
+    * OptimalHoldings(ABC).find()
+      * ```
+        weights = cvx.Variable(len(alpha_vector))
+        risk = cvx.quad_form(f, X) + cvx.quad_form(weights, S)
+        prob = cvx.Problem(obj, constraints)
+        prob.solve(max_iter=500)
+        optimal_weights = np.asarray(weights.value).flatten()
+        returns pd.DataFrame(data=optimal_weights, index=alpha_vector.index)
+        ```
 24. Optimize with a Regularization Parameter
-25. Optimize with a Strict Factor Constrains and Target Weighting
+    * To enforce diversification, change Objective Function
+    * CVXPY objective function that maximize $ \alpha^T * x + \lambda\|x\|_2\\ $, where $ x $ is the portfolio weights, $ \alpha $ is the alpha vector, and $ \lambda $ is the regularization parameter.
+    * `objective = cvx.Minimize(-alpha_vector.values.flatten()*weights + self.lambda_reg*cvx.norm(weights, 2))`
+25. Optimize with a Strict Factor Constrains and Target Weighting 
+    * Another common constraints is to take a predefined target weighting, $x^*$ (e.g., a quantile portfolio), and solve to get as close to that portfolio while respecting portfolio-level constraints. 
+    * Minimize on on $ \|x - x^*\|_2 $, where $ x $ is the portfolio weights  $ x^* $ is the target weighting
+    * `objective = cvs.Minimize(cvx.norm(alpha_vector.values.flatten()-weights), 2)`
 #### 5. Sentiment Analysis with NLP - NLP on Financial Statement
-0. import nltk, numpy, pandas, pickle, pprint, tqdm.tqdm, bs4.BeautifulSoup, re
-    * ```nltk.download('stopwords'), nltk.download('wordnet')```
-1. Get 10-k documents
+1. import nltk, numpy, pandas, pickle, pprint, tqdm.tqdm, bs4.BeautifulSoup, re
+    * `nltk.download('stopwords'), nltk.download('wordnet')`
+2. Get 10-k documents
     * Limit number of request per second by @limits
-    * ```feed = BeautifulSoup(request.get.text).feed```
-    * ```entries = [entry.content.find('filing-href').getText(), ... for entry in feed.find_all('entry')]```
+    * `feed = BeautifulSoup(request.get.text).feed`
+    * `entries = [entry.content.find('filing-href').getText(), ... for entry in feed.find_all('entry')]`
     * Download 10-k documents
     * Extract Documents
-      * ```doc_start_pattern = re.compile(r'<DOCUMENT>')```
-      * ```doc_start_position_list = [x.end() for x in doc_start_pattern.finditer(text)]```
+      * `doc_start_pattern = re.compile(r'<DOCUMENT>')`
+      * `doc_start_position_list = [x.end() for x in doc_start_pattern.finditer(text)]`
     * Get Document Types
-      * ```doc_type_pattern = re.compile(r'<TYPE>[^\n]+')```
-      * ```doc_type = doc_type_pattern.findall(doc)[0][len("<TYPE>"):].lower()```
-2. Process the Data
+      * `doc_type_pattern = re.compile(r'<TYPE>[^\n]+')`
+      * `doc_type = doc_type_pattern.findall(doc)[0][len("<TYPE>"):].lower()`
+3. Process the Data
     * Clean up
-      * ```text.lower()```
-      * ```BeautifulSoup(text, 'html.parser').get_text()```
+      * `text.lower()`
+      * `BeautifulSoup(text, 'html.parser').get_text()`
     * Lemmatize
-      * ```nltk.stem.WordNetLemmatizer, nltk.corpus.wordnet```
+      * `nltk.stem.WordNetLemmatizer, nltk.corpus.wordnet`
     * Remove Stopwords
-      * ```nltk.corpus.stopwords```
-3. Analysis on 10ks
+      * `nltk.corpus.stopwords`
+4. Analysis on 10ks
     * Loughran and McDonald sentiment word list
       * Negative, Positive, Uncertainty, Litigious, Constraining, Superfluous, Modal
     * Sentiment Bag of Words (Count for each ticker, sentiment)
@@ -219,32 +262,32 @@ $Minimize \left [ \sigma^2_p + \lambda \sqrt{\sum_{1}^{m}(weight_i - indexWeight
         features = vectorizer.get_feature_names()
         ```
     * Jaccard Similarity
-      * ```sklearn.metrics.jaccard_similarity_score(u, v)```
+      * `sklearn.metrics.jaccard_similarity_score(u, v)`
       * Get the similarity between neighboring bag of words
     * TF-IDF
-      * ```sklearn.feature_extraction.text.TfidfVectorizer(analyzer='word', vocabulary=sentiments)```
+      * `sklearn.feature_extraction.text.TfidfVectorizer(analyzer='word', vocabulary=sentiments)`
     * Cosine Similarity
-      * ```sklearn.metrics.pairwise.cosine_similarity(u, v)```
+      * `sklearn.metrics.pairwise.cosine_similarity(u, v)`
       * Get the similarity between neighboring IFIDF vectors
-4. Evaluate Alpha Factors
+5. Evaluate Alpha Factors
     * Use yearly pricing to match with 10K frequency of annual production
     * Turn the sentiment dictionary into a dataframe so that alphalens can read
     * Alphalens Format
-      * ```data = alphalens.utils.get_clean_factor_and_forward_return(df.stack(), pricing, quantiles=5, bins=None, period=[1])```
+      * `data = alphalens.utils.get_clean_factor_and_forward_return(df.stack(), pricing, quantiles=5, bins=None, period=[1])`
     * Alphalens Format with Unix Timestamp
-      * ```{factor: data.set_index(pd.MultiIndex.from_tuples([(x.timestamp(), y) for x, y in data.index.values], names=['date', 'asset'])) for factor, data in factor_data.items()}```
+      * `{factor: data.set_index(pd.MultiIndex.from_tuples([(x.timestamp(), y) for x, y in data.index.values], names=['date', 'asset'])) for factor, data in factor_data.items()}`
     * Factor Returns
-      * ```alphalens.performance.factor_returns(data)```
+      * `alphalens.performance.factor_returns(data)`
       * Should move up and to the right
     * Basis Points Per Day per Quantile
-      * ```alphalens.performance.mean_return_by_quantile(data)```
+      * `alphalens.performance.mean_return_by_quantile(data)`
       * Should be monotonic in quantiles
     * Turnover Analysis
       * Factor Rank Autocorrelation (FRA) to measure the stability without full backtest
-      * ```alphalens.factor_rank_autocorrelation(data)```
+      * `alphalens.factor_rank_autocorrelation(data)`
     * Sharpe Ratio of the Alphas
       * Should be 1 or higher
-      * ```np.sqrt(252)*factor_returns.mean() / factor_returns.std()```
+      * `np.sqrt(252)*factor_returns.mean() / factor_returns.std()`
 #### 6. Advanced NLP with Deep Leaning - Analizing Stock Sentiment from Twits (requiring GPU)
 0. import json, nltk, os, random, re, torch, torch.nn, torch.optim, torch.nn.functional, numpy
 1. Import Twits
@@ -263,7 +306,7 @@ $Minimize \left [ \sigma^2_p + \lambda \sqrt{\sum_{1}^{m}(weight_i - indexWeight
         wnl = nltk.stem.WordNetLemmatizer()
         tokens = [wnl.lemmatize(wnl.lemmatize(word, 'n'), 'v') for word in tokens]
     * Bag of Words
-      * ```bow = sorted(Counter(all_words), key=counts.get, reverse=True)
+      * `bow = sorted(Counter(all_words), key=counts.get, reverse=True)`
     * Remove most common words such as 'the, 'and' by high_cutoff=20, rare words by low_cutoff=1e-6
     * Create Dictionaries
       * ```
@@ -390,7 +433,7 @@ $Minimize \left [ \sigma^2_p + \lambda \sqrt{\sum_{1}^{m}(weight_i - indexWeight
                           "Accuracy: {:.6f}".format(np.mean(accuracy)))
         ```
 5. Making Predictions
-    * preprocess, filter non-vocab words, convert words to ids, add a batch dimention (```torch.tensor(tokens).view(-1,1))```
+    * preprocess, filter non-vocab words, convert words to ids, add a batch dimention (`torch.tensor(tokens).view(-1,1))`
         ```
         hidden = model.init_hidden(1)
         logps, _ = model.forward(text_input, hidden)
@@ -400,62 +443,64 @@ $Minimize \left [ \sigma^2_p + \lambda \sqrt{\sum_{1}^{m}(weight_i - indexWeight
 #### 7. Combining Multiple Signals for Enhanced Alpha
 0. import numpy, pandas, tqdm, matplotlib.pyplot
 1. Data Pipeline
-    * ```zipline.data.bundles``` - register, load
-    * ```zipline.pipeline.Pipeline```
-    * ```universe = zipline.pipeline.AverageDollarVolume```
-    * ```zipline.utils.calendar.get_calendar('NYSE')```
-    * ```zipline.pipeline.loaders.USEquityPricingLoader```
-    * ```engine = zipline.pipeline.engine.SimplePipelineEngine```
-    * ```zipline.data.data_portal.DataPortal```
+    * `zipline.data.bundles` - register, load
+    * `zipline.pipeline.Pipeline`
+    * `universe = zipline.pipeline.AverageDollarVolume`
+    * `zipline.utils.calendar.get_calendar('NYSE')`
+    * `zipline.pipeline.loaders.USEquityPricingLoader`
+    * `engine = zipline.pipeline.engine.SimplePipelineEngine`
+    * `zipline.data.data_portal.DataPortal`
 2. Alpha Factors
     * Momentum 1 Year Factor
-      * ```zipline.pipeline.factors.Returns().demean(groupby=Sector).rank().zscore()```
+      * `zipline.pipeline.factors.Returns().demean(groupby=Sector).rank().zscore()`
     * Mean Reversion 5 Day Sector Neutral Smoothed Factor
-      * ```unsmoothed = -Returns().demean(groupby=Sector).rank().zscore()```
-      * ```smoothed = zipline.pipeline.factors.SimpleMovingAverage(unsmoothed).rank().zscore()```
+      * `unsmoothed = -Returns().demean(groupby=Sector).rank().zscore()`
+      * `smoothed = zipline.pipeline.factors.SimpleMovingAverage(unsmoothed).rank().zscore()`
     * Overnight Sentiment Smoothed Factor
       * CTO(Returns), TrainingOvernightReturns(Returns)
     * Combine the three factors by pipeline.add()
 3. Features and Labels
     * Universal Quant Features
-      * Stock Volatility 20d, 120d: ```pipeline.add(zipline.pipeline.factors.AnnualizedVolatility)```
-      * Stock Dollar Volume 20d, 120d: ```pipeline.add(zipline.pipeline.factors.AverageDollarVolume)```
+      * Stock Volatility 20d, 120d: `pipeline.add(zipline.pipeline.factors.AnnualizedVolatility)`
+      * Stock Dollar Volume 20d, 120d: `pipeline.add(zipline.pipeline.factors.AverageDollarVolume)`
       * Sector
     * Regime Features
-      * High and low volatility 20d, 120d: ```MarketVolatility(CustomFactor)```
-      * High and low dispersion 20d, 120d: ```SimpleMovingAverage(MarketDispersion(CustomFactor))```
+      * High and low volatility 20d, 120d: `MarketVolatility(CustomFactor)`
+      * High and low dispersion 20d, 120d: `SimpleMovingAverage(MarketDispersion(CustomFactor))`
     * Target
-      * 1 Week Return, Quantized: ```pipeline.add(Returns().quantiles(2)), pipeline.add(Returns().quantiles(25))```
+      * 1 Week Return, Quantized: `pipeline.add(Returns().quantiles(2)), pipeline.add(Returns().quantiles(25))`
     * engine.run_pipeline()
     * Date Feature
       * January, December, Weekday, Quarter, Qtr-Year, Month End, Month Start, Qtr Start, Qtr End
     * One-hot encode Sector
     * Shift Target
     * IID Check (Independent and Identically Distributed)
-      * Check rolling autocorelation between 1d to 5d shifted target using ```scipy.stats.speamanr```
+      * Check rolling autocorelation between 1d to 5d shifted target using `scipy.stats.speamanr`
     * Train/Validation/Test Splits
 4. Random Forests
     * Visualize a Simple Tree
-      * clf = ```sklearn.tree.DecisionTreeClassifier()```
-      * Graph: ```IPython.display.display```
-      * Rank features by importance ```clf.feature_importances_```
+      * clf = `sklearn.tree.DecisionTreeClassifier()`
+      * Graph: `IPython.display.display`
+      * Rank features by importance `clf.feature_importances_`
     * Random Forest
-      * clf = ```sklearn.ensemble.RandomForestClassifier()```
-      * Scores: ```clf.score(), clf.oob_score_, clf.feature_importances_```
+      * clf = `sklearn.ensemble.RandomForestClassifier()`
+      * Scores: `clf.score(), clf.oob_score_, clf.feature_importances_`
     * Model Results
-      * Sharpe Ratios ```sqrt(252)*factor_returns.mean()/factor_returns.std()```
-      * Factor Returns ```alphalens.performance.factor_returns()```
-      * Factor Rank Autocorelation ```alphalens.performance.factor_rank_autocorrelation()```
-      * Scores: ```clf.predict_proba()```
+      * Sharpe Ratios `sqrt(252)*factor_returns.mean()/factor_returns.std()`
+      * Factor Returns `alphalens.performance.factor_returns()`
+      * Factor Rank Autocorelation `alphalens.performance.factor_rank_autocorrelation()`
+      * Scores: `clf.predict_proba()`
     * Check the above for Training Data and Validation Data
 5. Overlapping Samples
     * Option 1) Drop Overlapping Samples
-    * Option 2) Use ```sklearn.ensemble.BaggingClassifier```'s max_samples with ```base_clf = DecisionTreeClassifier()```
+    * Option 2) Use `sklearn.ensemble.BaggingClassifier`'s max_samples with `base_clf = DecisionTreeClassifier()`
     * Option 3) Build an ensemble of non-overlapping trees
-      * ```sklearn.ensemble.VotingClassifier```
-      * ```sklearn.base.clone```
-      * ```sklearn.preprocessing.LavelEncoder```
-      * ```sklearn.utils.Bunch```
+      * ```
+        sklearn.ensemble.VotingClassifier
+        sklearn.base.clone
+        sklearn.preprocessing.LavelEncoder
+        sklearn.utils.Bunch
+        ```
 6. Final Model
     * Re-Training Model using Training Set + Validation Set
 #### 8. Simulating Trades with Historical Data - Backtesting
@@ -486,13 +531,9 @@ $Minimize \left [ \sigma^2_p + \lambda \sqrt{\sum_{1}^{m}(weight_i - indexWeight
 13. Combine the four Alpha Factors
     * sum(B_Alpha(Design Matrix)) * 1e-4
 14. Define Objective Function
-    * $$
-f(\mathbf{h}) = \frac{1}{2}\kappa \mathbf{h}_t^T\mathbf{Q}^T\mathbf{Q}\mathbf{h}_t + \frac{1}{2} \kappa \mathbf{h}_t^T \mathbf{S} \mathbf{h}_t - \mathbf{\alpha}^T \mathbf{h}_t + (\mathbf{h}_{t} - \mathbf{h}_{t-1})^T \mathbf{\Lambda} (\mathbf{h}_{t} - \mathbf{h}_{t-1})
-$$
+    * $$ f(\mathbf{h}) = \frac{1}{2}\kappa \mathbf{h}_t^T\mathbf{Q}^T\mathbf{Q}\mathbf{h}_t + \frac{1}{2} \kappa \mathbf{h}_t^T \mathbf{S} \mathbf{h}_t - \mathbf{\alpha}^T \mathbf{h}_t + (\mathbf{h}_{t} - \mathbf{h}_{t-1})^T \mathbf{\Lambda} (\mathbf{h}_{t} - \mathbf{h}_{t-1}) $$
 15. Define Gradient of Objective Function
-    * $$
-f'(\mathbf{h}) = \frac{1}{2}\kappa (2\mathbf{Q}^T\mathbf{Qh}) + \frac{1}{2}\kappa (2\mathbf{Sh}) - \mathbf{\alpha} + 2(\mathbf{h}_{t} - \mathbf{h}_{t-1}) \mathbf{\Lambda}
-$$
+    * $$ f'(\mathbf{h}) = \frac{1}{2}\kappa (2\mathbf{Q}^T\mathbf{Qh}) + \frac{1}{2}\kappa (2\mathbf{Sh}) - \mathbf{\alpha} + 2(\mathbf{h}_{t} - \mathbf{h}_{t-1}) \mathbf{\Lambda} $$
 16. Optimize Portfolio
     * h = scipy.optimize.fmin_l_bfgs_b(func, initial_guess, func_gradient)
 17. Calculate Risk Exposure
@@ -500,9 +541,7 @@ $$
 18. Calculate Alpha Exposure
     * B_Alpha.T * h
 19. Calculate Transaction Cost
-    * $$
-tcost = \sum_i^{N} \lambda_{i} (h_{i,t} - h_{i,t-1})^2
-$$
+    * $$ tcost = \sum_i^{N} \lambda_{i} (h_{i,t} - h_{i,t-1})^2 $$
 20. Build Tradelist
     * h - h_previous
 21. Save optimal holdings as previous optimal holdings
@@ -510,12 +549,8 @@ $$
 22. Run the Backtest
     * Loop #6 to #21 for all the dates
 23. PnL Attrribution
-    * $$
-{PnL}_{alpha}= f \times b_{alpha}
-$$
-    * $$
-{PnL}_{risk} = f \times b_{risk}
-$$
+    * $$ {PnL}_{alpha}= f \times b_{alpha} $$
+    * $$ {PnL}_{risk} = f \times b_{risk} $$
 
 24. Build Portfolio Characteristics
     * calculate the sum of long positions, short positions, net positions, gross market value, and amount of dollars traded.

@@ -1,6 +1,6 @@
 alphalens==0.3.2
 graphviz==0.10.1
-numpy==1.13.3
+numpy==1.22.0
 pandas==0.18.1
 python-dateutil==2.6.1
 pytz==2017.3

@@ -30,7 +30,7 @@ def estimate_volatility(prices, l):
     
 def test_run(filename='data.csv'):
     """Test run get_most_volatile() with stock prices from a file."""
-    prices = pd.read_csv(filename, parse_dates=['date'], index_col='date', squeeze=True)
+    prices = pd.read_csv(filename, parse_dates=['date'], index_col='date').squeeze()
     print("Most recent volatility estimate: {:.6f}".format(estimate_volatility(prices, 0.7)))
 
 

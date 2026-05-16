@@ -131,4 +131,4 @@ def plot_factor_rank_autocorrelation(factor_data):
 
 def build_factor_data(factor_data, pricing):
     return {factor_name: al.utils.get_clean_factor_and_forward_returns(factor=data, prices=pricing, periods=[1])
-        for factor_name, data in factor_data.iteritems()}
+        for factor_name, data in factor_data.items()}

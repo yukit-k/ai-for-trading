@@ -1,12 +1,14 @@
-alphalens==0.3.2
-graphviz==0.10.1
-numpy==1.13.3
-pandas==0.18.1
-python-dateutil==2.6.1
-pytz==2017.3
-scipy==1.0.0
-scikit-learn==0.19.1
-six==1.11.0
-tables==3.3.0
-tqdm==4.19.5
-zipline===1.2.0
+alphalens-reloaded>=0.4.3
+graphviz>=0.20.0
+numpy>=1.24.0
+pandas>=2.0.0
+python-dateutil>=2.8.2
+pytz>=2023.3
+scipy>=1.10.0
+scikit-learn>=1.3.0
+six>=1.16.0
+tables>=3.8.0
+tqdm>=4.65.0
+# zipline-reloaded is the maintained community fork of the original Quantopian zipline.
+# Install separately following https://github.com/stefan-jansen/zipline-reloaded
+zipline-reloaded>=3.0.3

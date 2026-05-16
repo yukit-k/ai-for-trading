@@ -3,27 +3,66 @@
 Udacity nano-degree to learn practical AI application in trading algo.
 Designed by WorldQuant.
 
+### Getting Started
+
+**Prerequisites:** Python 3.10+ and `pip`.
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/ai-for-trading.git
+cd ai-for-trading
+
+# Create and activate a virtual environment (recommended)
+python3 -m venv .venv
+source .venv/bin/activate       # macOS / Linux
+# .venv\Scripts\activate        # Windows
+
+# Install core dependencies
+pip install numpy pandas matplotlib scipy scikit-learn statsmodels \
+            cvxpy plotly scikit-image jupyter notebook
+
+# Module 6 – deep learning (PyTorch)
+pip install -r module6/deep-learning-v2-pytorch/requirements.txt
+
+# Module 7 – alpha research (zipline-reloaded + alphalens)
+# zipline-reloaded requires additional setup; follow:
+# https://github.com/stefan-jansen/zipline-reloaded
+pip install zipline-reloaded alphalens-reloaded graphviz tqdm tables
+
+# Module 8 – backtesting extras
+pip install -r module8/requirements.txt
+
+# Launch Jupyter
+jupyter notebook
+```
+
+> **Note (Module 7 / Module 4):** The original Quantopian `zipline` (v1.x) is no longer maintained.
+> This repo uses [`zipline-reloaded`](https://github.com/stefan-jansen/zipline-reloaded), the community-maintained fork.
+> You will also need to ingest market data before running the pipeline notebooks — see the zipline-reloaded docs for the `eod-quotemedia` bundle setup.
+
 ### Syllabus:
 1. Basic Quantitative Trading - Trading with Momentum
 2. Advanced Quantitative Trading - Breakout Strategy
 3. Stocks, Indices, and ETFs - Smart Beta and Portfolio Optimization
 4. Factor Investing and Alpha Research - Alpha Research and Factor Modeling
 5. Sentiment Analysis with Natural Language Processing
-6. Advanced Natural Language Processing with Deep Leaning
+6. Advanced Natural Language Processing with Deep Learning
 7. Combining Multiple Signals for Enhanced Alpha
 8. Simulating Trades with Historical Data - Backtesting
 
 ### Main Libraries:
- * Numpy, Pandas, Matplotlib
- * Scikit-learn
- * Pytorch
- * Quantopian/zipline
- * Quantmedia
- 
+ * NumPy, Pandas, Matplotlib, SciPy
+ * Scikit-learn, Statsmodels
+ * PyTorch (module 6)
+ * CVXPY (modules 3, 4, 8)
+ * zipline-reloaded (modules 4, 7) — community fork of Quantopian/zipline
+ * alphalens-reloaded (modules 4, 7) — community fork of Quantopian/alphalens
+ * Plotly (modules 2, 8)
+ * scikit-image (module 8)
+
 ### My Course:
  * Started: September 2019
- * Target End: February 2020
- * Actual End: January 2020
+ * Completed: January 2020
 
 ### Project Details:
 #### 1. Basic Quantitative Trading - Trading with Momentum

@@ -6,7 +6,7 @@ import pandas as pd
 import plotly as py
 import plotly.graph_objs as go
 import plotly.offline as offline_py
-offline_py.init_notebook_mode(connected=True)
+from plotly.subplots import make_subplots
 
 
 def _generate_stock_trace(prices):
@@ -21,14 +21,14 @@ def _generate_buy_annotations(prices, signal):
     return [{
         'x': index, 'y': price, 'text': 'Long', 'bgcolor': helper.color_scheme['background_label'],
         'ayref': 'y', 'ax': 0, 'ay': 20}
-        for index, price in prices[signal == 1].iteritems()]
+        for index, price in prices[signal == 1].items()]
 
 
 def _generate_sell_annotations(prices, signal):
     return [{
         'x': index, 'y': price, 'text': 'Short', 'bgcolor': helper.color_scheme['background_label'],
         'ayref': 'y', 'ax': 0, 'ay': 160}
-        for index, price in prices[signal == -1].iteritems()]
+        for index, price in prices[signal == -1].items()]
 
 
 def _generate_second_tetration_stock(stock_symbol, dates):
@@ -201,7 +201,7 @@ def plot_signal_histograms(signal_list, title, subplot_titles):
     config = helper.generate_config()
     colors = Color(helper.color_scheme['low_value']).range_to(Color(helper.color_scheme['high_value']), len(signal_series_list))
 
-    fig = py.tools.make_subplots(rows=1, cols=len(signal_series_list), subplot_titles=subplot_titles, print_grid=False)
+    fig = make_subplots(rows=1, cols=len(signal_series_list), subplot_titles=subplot_titles)
     fig['layout'].update(title=title, showlegend=False)
 
     for series_i, (signal_series, color) in enumerate(zip(signal_series_list, colors), 1):
@@ -223,7 +223,7 @@ def plot_signal_to_normal_histograms(signal_list, title, subplot_titles):
     y_range = [0, 1500]
     config = helper.generate_config()
 
-    fig = py.tools.make_subplots(rows=1, cols=len(signal_series_list), subplot_titles=subplot_titles, print_grid=False)
+    fig = make_subplots(rows=1, cols=len(signal_series_list), subplot_titles=subplot_titles)
     fig['layout'].update(title=title)
 
     for series_i, signal_series in enumerate(signal_series_list, 1):

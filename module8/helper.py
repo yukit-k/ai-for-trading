@@ -6,7 +6,7 @@ import plotly.graph_objs as go
 
 def plot_iso_surface(fcn_grid, iso_level, n_samples, grid_max, title, color, display_plot):
     spacing = 2*grid_max/n_samples
-    vertices, simplices, _, _ = measure.marching_cubes_lewiner(fcn_grid, iso_level, spacing=(spacing, spacing, spacing))
+    vertices, simplices, _, _ = measure.marching_cubes(fcn_grid, iso_level, spacing=(spacing, spacing, spacing))
     
     x,y,z = zip(*vertices) 
     x = np.array(x) - grid_max

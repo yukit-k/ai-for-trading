@@ -1,5 +1,5 @@
 colour==0.1.5
-cvxopt==1.1.9
+cvxopt==1.2.7
 cycler==0.10.0
 matplotlib==2.1.1
 numpy==1.13.3

@@ -1,5 +1,5 @@
 alphalens==0.3.2
-nltk==3.3.0
+nltk==3.4.5
 numpy==1.13.3
 ratelimit==2.2.0
 requests==2.18.4
